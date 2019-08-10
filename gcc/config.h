@@ -52,10 +52,14 @@
 #undef NO_MINUS_C_MINUS_O
 
 /* Define to `long' if <sys/types.h> doesn't define.  */
+#ifndef MVSGCC_CROSS
 #define off_t long
+#endif
 
 /* Define to `int' if <sys/types.h> doesn't define.  */
+#ifndef MVSGCC_CROSS
 #define pid_t int
+#endif
 
 /* Define to `unsigned' if <sys/types.h> doesn't define.  */
 #undef size_t
@@ -76,7 +80,9 @@
 #undef TIME_WITH_SYS_TIME
 
 /* Define to `int' if <sys/types.h> doesn't define.  */
+#ifndef MVSGCC_CROSS
 #define uid_t int
+#endif
 
 /* Define vfork as fork if vfork does not work.  */
 #undef vfork
@@ -92,7 +98,9 @@
 #undef HAVE_GAS_FILDS_FISTS
 
 /* Define to `int' if <sys/types.h> doesn't define.  */
+#ifndef MVSGCC_CROSS
 #define ssize_t unsigned int
+#endif
 
 /* Define if cpp should also search $prefix/include.  */
 #undef PREFIX_INCLUDE_DIR
@@ -207,7 +215,11 @@
 #undef HAVE_STRDUP
 
 /* Define if you have the strsignal function.  */
+#ifdef MVSGCC_CROSS
+#define HAVE_STRSIGNAL 1
+#else
 #undef HAVE_STRSIGNAL
+#endif
 
 /* Define if you have the strtoul function.  */
 #define HAVE_STRTOUL 1
