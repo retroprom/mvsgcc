@@ -28,7 +28,9 @@ Software Foundation, 59 Temple Place - Suite 330, Boston, MA
 #undef FLOAT /* This is for hpux. They should change hpux.  */
 #undef FFS  /* Some systems define this in param.h.  */
 #include "system.h"
+#ifdef USE_SIGNALS
 #include <signal.h>
+#endif
 #include <setjmp.h>
 
 #ifdef HAVE_SYS_RESOURCE_H
@@ -1660,7 +1662,7 @@ int float_handled;
 jmp_buf float_handler;
 
 /* Signals actually come here.  */
-
+#ifdef USE_SIGNALS
 static void
 float_signal (signo)
      /* If this is missing, some compilers complain.  */
@@ -1675,6 +1677,7 @@ float_signal (signo)
   signal (SIGFPE, float_signal);
   longjmp (float_handler, 1);
 }
+#endif
 
 /* Specify where to longjmp to when a floating arithmetic error happens.
    If HANDLER is 0, it means don't handle the errors any more.  */
@@ -1683,6 +1686,7 @@ static void
 set_float_handler (handler)
      jmp_buf handler;
 {
+#ifdef USE_SIGNALS
   float_handled = (handler != 0);
   if (handler)
     memcpy (float_handler, handler, sizeof (float_handler));
@@ -1692,6 +1696,7 @@ set_float_handler (handler)
       signal (SIGFPE, float_signal);
       float_handler_set = 1;
     }
+#endif
 }
 
 /* This is a wrapper function for code which might elicit an

@@ -72,7 +72,9 @@ compilation is specified by a string called a "spec".  */
 
 #include "config.h"
 #include "system.h"
+#ifdef USE_SIGNALS
 #include <signal.h>
+#endif
 #if ! defined( SIGCHLD ) && defined( SIGCLD )
 #  define SIGCHLD SIGCLD
 #endif
@@ -5836,6 +5838,7 @@ set_input (filename)
 
 /* On fatal signals, delete all the temporary files.  */
 
+#ifdef USE_SIGNALS
 static void
 fatal_error (signum)
      int signum;
@@ -5847,6 +5850,7 @@ fatal_error (signum)
      so its normal effect occurs.  */
   kill (getpid (), signum);
 }
+#endif
 
 extern int main PARAMS ((int, const char *const *));
 
