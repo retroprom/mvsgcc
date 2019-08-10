@@ -27,6 +27,7 @@ Foundation, 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 #include "intl.h"
 #include "mkdeps.h"
 #include "splay-tree.h"
+#include "unixio.h"
 
 #ifdef HAVE_MMAP_FILE
 # include <sys/mman.h>
