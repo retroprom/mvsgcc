@@ -10,6 +10,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#ifdef MVSGCC_CROSS
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <unistd.h>
+
+#else
+
 #define S_IFBLK 0x3000
 #define S_IFDIR 0x4000
 #define S_IFREG 0x8000
@@ -70,5 +80,7 @@ DIR *opendir(char *dirname);
 struct dirent *readdir(DIR *dir);
 int closedir(DIR *dir);
 int execvp(char *path, char **argv);
+
+#endif /* !MVSGCC_CROSS */
 
 #endif

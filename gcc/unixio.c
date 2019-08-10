@@ -21,6 +21,8 @@
 
 #include "unixio.h"
 
+#ifndef MVSGCC_CROSS
+
 static FILE *files[FOPEN_MAX];
 /*char *environ[] = { NULL };*/
 
@@ -222,3 +224,6 @@ int execvp(char *path, char **argv)
 {
     return (0);
 }
+
+#endif /* !MVSGCC_CROSS */
+

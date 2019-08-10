@@ -41,7 +41,9 @@ int t_fputc (int c, FILE *file);
 #define TARGET_EBCDIC 1
 #define TARGET_NAME "mvs"
 
+#ifndef MVSGCC_CROSS
 #define USE_SHORT_NAMES 1
+#endif
 /* now redefine all functions that are too long
    to handle on MVS, before anyone tries to start
    using them. */
