@@ -1,9 +1,11 @@
 
-DEFINES = -DIN_GCC -DHAVE_CONFIG_H -DPUREISO -DMVSGCC_CROSS
+# common definitions
+DEFINES = -DIN_GCC -DHAVE_CONFIG_H -DPUREISO
 INCLUDES = -I include -I gcc -I gcc/config/i370
 
+# definitions for building cross tools
 CC = gcc
-CFLAGS = -std=c99 -m32 -g -O2 -pedantic $(DEFINES) $(INCLUDES)
+CFLAGS = -std=c99 -m32 -g -O2 -pedantic $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
 
 # sources for the compiler
 GCC_SRCS= \
@@ -133,7 +135,7 @@ GCC_SRCS= \
   gcc/config/i370/i370.c
 
 # sources for libiberty
-IBERTY_SRCS = \
+LIB_SRCS = \
   libiberty/xmalloc.c \
   libiberty/xstrerror.c \
   libiberty/xstrdup.c \
@@ -152,18 +154,57 @@ IBERTY_SRCS = \
   libiberty/getpagesize.c \
   libiberty/partition.c
 
-# derive list of object files
-GCC_OBJS=$(GCC_SRCS:.c=.o)
-IBERTY_OBJS=$(IBERTY_SRCS:.c=.o)
+# all sources for the compiler
+COMPILER_SRCS = $(GCC_SRCS) $(LIB_SRCS)
 
-# default target
-default: gccmvs
+# default rule
+all: target-mvs target-cms target-vse
+.PHONY: all
 
-gccmvs: $(GCC_OBJS) $(IBERTY_OBJS)
-	$(CC) $(CFLAGS) -o $@ $?
+# rule for MVS
+target-mvs: out/i370-mvs-gcc
+.PHONY: target-mvs
 
-# clean target
+# rule for CMS
+target-cms: out/i370-cms-gcc
+.PHONY: target-cms
+
+# rule for VSE
+target-vse: out/i370-vse-gcc
+.PHONY: target-vse
+
+# cleanup rule
 clean:
-	rm -f gccmvs $(GCC_OBJS) $(IBERTY_OBJS)
+	rm -rf out
 .PHONY: clean
+
+# dummy rule to prevent running yacc
+gcc/c-parse.c:
+	touch $@
+
+# rule for building a cross compiler object
+define build_cross_object
+# rule for one source file
+out/$(1)-cross/$(notdir $(3:.c=.o)): $(3) out/$(1)-cross
+	$(CC) $(CFLAGS) $(2) -c -o $$@ $$<
+
+endef
+
+# rule for building a cross compiler
+define build_cross
+# rule for each source file
+$(foreach src,$(3),$(call build_cross_object,$(1),$(2),$(src)))
+# rule for output directory
+out/$(1)-cross:
+	mkdir -p $$@
+# rule for compiler binary
+out/$(1)-gcc: $(foreach src,$(3),out/$(1)-cross/$(notdir $(src:.c=.o)))
+	$(CC) $(CFLAGS) -o $$@ $$?
+
+endef
+
+# define cross compilers
+$(eval $(call build_cross,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS)))
+$(eval $(call build_cross,i370-cms,-DTARGET_CMS,$(COMPILER_SRCS)))
+$(eval $(call build_cross,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS)))
 
