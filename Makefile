@@ -5,7 +5,7 @@ INCLUDES = -I include -I gcc -I gcc/config/i370
 
 # definitions for building cross tools
 CC = gcc
-CFLAGS = -std=c99 -m32 -g -O2 -pedantic $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
+CFLAGS = -std=c99 -g -O2 -pedantic $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
 
 # sources for the compiler
 GCC_SRCS= \
