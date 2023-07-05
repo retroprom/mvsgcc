@@ -14,10 +14,6 @@ One possible example might be SQLite or something like Lua. Both of them are sma
 
 I have no fixed plans on whether to proceed with this. Use at your own peril. Contributions are welcome though.
 
-### Building on Windows
-
-There is a set of batch files in the 'gcc' directory. They may or may not work.
-
 ### Building on POSIX
 
 Currently only the initial cross-compile stage can be built.
