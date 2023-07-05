@@ -1,11 +1,15 @@
 
 # common definitions
-DEFINES = -DIN_GCC -DHAVE_CONFIG_H -DPUREISO
-INCLUDES = -I include -I gcc -I gcc/config/i370
+DEFINES := -DIN_GCC -DHAVE_CONFIG_H -DPUREISO
+INCLUDES := -Iinclude -Igcc -Igcc/config/i370
+CFLAGS_COMMON := -std=c99 -pedantic
 
 # definitions for building cross tools
 CC = gcc
-CFLAGS = -std=c99 -g -O2 -pedantic $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
+CFLAGS = $(CFLAGS_COMMON) -m32 -g -O0 $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
+
+# definitions for building target files
+CFLAGS_MVS = $(CFLAGS_COMMON) -Os -I../mvsclib/common/include -I../mvsclib/mvs/include $(INCLUDES) $(DEFINES)
 
 # sources for the compiler
 GCC_SRCS= \
@@ -158,20 +162,24 @@ LIB_SRCS = \
 COMPILER_SRCS = $(GCC_SRCS) $(LIB_SRCS)
 
 # default rule
-all: target-mvs target-cms target-vse
+all: all-cross
 .PHONY: all
+all-cross: mvs-cross cms-cross vse-cross
+.PHONY: all-cross
+all-target: mvs-target
+.PHONY: all-target
 
-# rule for MVS
-target-mvs: out/i370-mvs-gcc
-.PHONY: target-mvs
+# cross compilers
+mvs-cross: out/i370-mvs-gcc
+.PHONY: mvs-cross
+cms-cross: out/i370-cms-gcc
+.PHONY: cms-cross
+vse-cross: out/i370-vse-gcc
+.PHONY: vse-cross
 
-# rule for CMS
-target-cms: out/i370-cms-gcc
-.PHONY: target-cms
-
-# rule for VSE
-target-vse: out/i370-vse-gcc
-.PHONY: target-vse
+# target compilers
+mvs-target: mvs-cross i370-mvs-target-all
+.PHONY: mvs-target
 
 # cleanup rule
 clean:
@@ -179,13 +187,14 @@ clean:
 .PHONY: clean
 
 # dummy rule to prevent running yacc
-gcc/c-parse.c:
+gcc/c-parse.c: gcc/c-parse.y
 	touch $@
 
-# rule for building a cross compiler object
+# rule for building a cross object
 define build_cross_object
 # rule for one source file
-out/$(1)-cross/$(notdir $(3:.c=.o)): $(3) out/$(1)-cross
+out/$(1)-cross/$(notdir $(3:.c=.o)): $(3)
+	@mkdir -p out/$(1)-cross
 	$(CC) $(CFLAGS) $(2) -c -o $$@ $$<
 
 endef
@@ -194,12 +203,32 @@ endef
 define build_cross
 # rule for each source file
 $(foreach src,$(3),$(call build_cross_object,$(1),$(2),$(src)))
-# rule for output directory
-out/$(1)-cross:
-	mkdir -p $$@
+
 # rule for compiler binary
 out/$(1)-gcc: $(foreach src,$(3),out/$(1)-cross/$(notdir $(src:.c=.o)))
 	$(CC) $(CFLAGS) -o $$@ $$?
+
+endef
+
+# rule for building a target file
+define build_target_object
+# rule for one source file
+out/$(1)-target/$(notdir $(3:.c=.S)): $(3) out/$(1)-gcc
+	@mkdir -p out/$(1)-target
+	out/$(1)-gcc $(4) -S -o $$@ $$<
+
+endef
+
+define build_target
+# rule for each source file
+$(foreach src,$(3),$(call build_target_object,$(1),$(2),$(src),$(4)))
+# rule for output directory
+out/$(1)-target:
+	mkdir -p $$@
+# rule for compiler
+$(1)-target-all: $(foreach src,$(3),out/$(1)-target/$(notdir $(src:.c=.S)))
+	echo DONE
+.PHONY: $(1)-all
 
 endef
 
@@ -207,4 +236,7 @@ endef
 $(eval $(call build_cross,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS)))
 $(eval $(call build_cross,i370-cms,-DTARGET_CMS,$(COMPILER_SRCS)))
 $(eval $(call build_cross,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS)))
+
+# define target compilers
+$(eval $(call build_target,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS),$(CFLAGS_MVS)))
 
