@@ -11,6 +11,8 @@ CFLAGS = $(CFLAGS_COMMON) -m32 -g -O0 $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
 
 # definitions for building target files
 CFLAGS_MVS = $(CFLAGS_COMMON) -Os -I../mvsclib/common/include -I../mvsclib/mvs/include $(INCLUDES) $(DEFINES)
+CFLAGS_CMS = $(CFLAGS_MVS)
+CFLAGS_VSE = $(CFLAGS_MVS)
 
 # sources for the compiler
 GCC_SRCS= \
@@ -181,6 +183,10 @@ vse-cross: out/i370-vse-gcc
 # target compilers
 mvs-target: mvs-cross i370-mvs-target-all
 .PHONY: mvs-target
+cms-target: cms-cross i370-cms-target-all
+.PHONY: cms-target
+vse-target: vse-cross i370-vse-target-all
+.PHONY: vse-target
 
 # cleanup rule
 clean:
@@ -216,7 +222,7 @@ define build_target_object
 # rule for one source file
 out/$(1)-target/$(notdir $(3:.c=.S)): $(3) out/$(1)-gcc
 	@mkdir -p out/$(1)-target
-	out/$(1)-gcc $(4) -S -o $$@ $$<
+	out/$(1)-gcc $(4) $(2) -S -o $$@ $$<
 
 endef
 
@@ -240,4 +246,7 @@ $(eval $(call build_cross,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS)))
 
 # define target compilers
 $(eval $(call build_target,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS),$(CFLAGS_MVS)))
+$(eval $(call build_target,i370-cms,-DTARGET_CMS,$(COMPILER_SRCS),$(CFLAGS_CMS)))
+$(eval $(call build_target,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS),$(CFLAGS_VSE)))
+
 
