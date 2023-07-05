@@ -6,6 +6,7 @@ CFLAGS_COMMON := -std=c99 -pedantic
 
 # definitions for building cross tools
 CC = gcc
+# TODO must build with -m32 -O0 on modern compilers
 CFLAGS = $(CFLAGS_COMMON) -m32 -g -O0 $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
 
 # definitions for building target files
