@@ -1,20 +1,31 @@
+# Custom makefile for MVSGCC
 
-# common definitions
-DEFINES := -DIN_GCC -DHAVE_CONFIG_H -DPUREISO
-INCLUDES := -Iinclude -Igcc -Igcc/config/i370
-CFLAGS_COMMON := -std=c99 -pedantic
+# Configuration
+PREFIX ?= /usr/local
 
-# definitions for building cross tools
-CC = gcc
+# Common definitions
+DEFINES = -DIN_GCC -DHAVE_CONFIG_H -DPUREISO
+INCLUDES = -Iinclude -Igcc -Igcc/config/i370
+LANGUAGE = -std=c99 -pedantic
+
+# Definitions for building host programs
+HOST_CC = gcc
 # TODO must build with -m32 -O0 on modern compilers
-CFLAGS = $(CFLAGS_COMMON) -m32 -g -O0 $(INCLUDES) -DMVSGCC_CROSS $(DEFINES)
+HOST_CFLAGS = $(LANGUAGE) -g -m32 -O0 $(INCLUDES) $(DEFINES) -DMVSGCC_CROSS
 
-# definitions for building target files
-CFLAGS_MVS = $(CFLAGS_COMMON) -Os -I../mvsclib/common/include -I../mvsclib/mvs/include $(INCLUDES) $(DEFINES)
-CFLAGS_CMS = $(CFLAGS_MVS)
-CFLAGS_VSE = $(CFLAGS_MVS)
+# Definitions for building target programs
+TARGET_INCLUDES = -I../mvsclib/common/include -I../mvsclib/mvs/include
+TARGET_CFLAGS = $(LANGUAGE) -Os $(TARGET_INCLUDES) $(INCLUDES) $(DEFINES)
 
-# sources for the compiler
+# Definitions for each platform
+MVS_CFLAGS = $(TARGET_CFLAGS) -DTARGET_MVS
+MVS_TARGET = i370-mvs
+CMS_CFLAGS = $(TARGET_CFLAGS) -DTARGET_CMS
+CMS_TARGET = i370-cms
+VSE_CFLAGS = $(TARGET_CFLAGS) -DTARGET_VSE
+VSE_TARGET = i370-vse
+
+# Sources for the compiler
 GCC_SRCS= \
   gcc/alias.c \
   gcc/attribs.c \
@@ -141,8 +152,8 @@ GCC_SRCS= \
   gcc/config/i370/i370-c.c \
   gcc/config/i370/i370.c
 
-# sources for libiberty
-LIB_SRCS = \
+# Sources for libiberty
+LIBERTY_SRCS = \
   libiberty/xmalloc.c \
   libiberty/xstrerror.c \
   libiberty/xstrdup.c \
@@ -161,10 +172,10 @@ LIB_SRCS = \
   libiberty/getpagesize.c \
   libiberty/partition.c
 
-# all sources for the compiler
-COMPILER_SRCS = $(GCC_SRCS) $(LIB_SRCS)
+# All sources for the compiler
+ALL_GCC_SRCS = $(GCC_SRCS) $(LIBERTY_SRCS)
 
-# default rule
+# Default rule
 all: all-cross
 .PHONY: all
 all-cross: mvs-cross cms-cross vse-cross
@@ -172,7 +183,20 @@ all-cross: mvs-cross cms-cross vse-cross
 all-target: mvs-target
 .PHONY: all-target
 
-# cross compilers
+# Install rule
+install: install-cross install-target
+.PHONY: install
+install-cross:
+.PHONY: install-cross
+install-target:
+.PHONY: install-target
+
+# Cleanup rule
+clean:
+	rm -rf out
+.PHONY: clean
+
+# Targets for cross compilers
 mvs-cross: out/i370-mvs-gcc
 .PHONY: mvs-cross
 cms-cross: out/i370-cms-gcc
@@ -180,73 +204,61 @@ cms-cross: out/i370-cms-gcc
 vse-cross: out/i370-vse-gcc
 .PHONY: vse-cross
 
-# target compilers
-mvs-target: mvs-cross i370-mvs-target-all
+# Targets for target compilers
+mvs-target: mvs-cross i370-mvs-target-asm
 .PHONY: mvs-target
-cms-target: cms-cross i370-cms-target-all
+cms-target: cms-cross i370-cms-target-asm
 .PHONY: cms-target
-vse-target: vse-cross i370-vse-target-all
+vse-target: vse-cross i370-vse-target-asm
 .PHONY: vse-target
 
-# cleanup rule
-clean:
-	rm -rf out
-.PHONY: clean
-
-# dummy rule to prevent running yacc
+# Dummy rule to prevent running yacc
 gcc/c-parse.c: gcc/c-parse.y
 	touch $@
 
-# rule for building a cross object
+# Rule for building a cross object
 define build_cross_object
-# rule for one source file
 out/$(1)-cross/$(notdir $(3:.c=.o)): $(3)
 	@mkdir -p out/$(1)-cross
-	$(CC) $(CFLAGS) $(2) -c -o $$@ $$<
+	$(HOST_CC) $(2) -c -o $$@ $$<
 
 endef
 
-# rule for building a cross compiler
+# Rule for building a cross compiler
 define build_cross
-# rule for each source file
+# build each source file
 $(foreach src,$(3),$(call build_cross_object,$(1),$(2),$(src)))
-
-# rule for compiler binary
+# build the cross compiler binary
 out/$(1)-gcc: $(foreach src,$(3),out/$(1)-cross/$(notdir $(src:.c=.o)))
-	$(CC) $(CFLAGS) -o $$@ $$?
+	$(HOST_CC) $(2) -o $$@ $$?
 
 endef
 
-# rule for building a target file
+# Rule for building a target file
 define build_target_object
-# rule for one source file
-out/$(1)-target/$(notdir $(3:.c=.S)): $(3) out/$(1)-gcc
+out/$(1)-target/$(notdir $(3:.c=.asm)): $(3) out/$(1)-gcc
 	@mkdir -p out/$(1)-target
-	out/$(1)-gcc $(4) $(2) -S -o $$@ $$<
+	out/$(1)-gcc $(2) -S -o $$@ $$<
 
 endef
 
+# Rule for building a target compiler
 define build_target
-# rule for each source file
-$(foreach src,$(3),$(call build_target_object,$(1),$(2),$(src),$(4)))
-# rule for output directory
-out/$(1)-target:
-	mkdir -p $$@
-# rule for compiler
-$(1)-target-all: $(foreach src,$(3),out/$(1)-target/$(notdir $(src:.c=.S)))
-	echo DONE
-.PHONY: $(1)-all
+# build each source file
+$(foreach src,$(3),$(call build_target_object,$(1),$(2),$(src)))
+# build asm files for the compiler
+$(1)-target-asm: $(foreach src,$(3),out/$(1)-target/$(notdir $(src:.c=.asm)))
+	@echo DONE
+.PHONY: $(1)-target-asm
 
 endef
 
-# define cross compilers
-$(eval $(call build_cross,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS)))
-$(eval $(call build_cross,i370-cms,-DTARGET_CMS,$(COMPILER_SRCS)))
-$(eval $(call build_cross,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS)))
+# Define cross compilers
+$(eval $(call build_cross,$(MVS_TARGET),$(HOST_CFLAGS) -DTARGET_MVS,$(ALL_GCC_SRCS)))
+$(eval $(call build_cross,$(CMS_TARGET),$(HOST_CFLAGS) -DTARGET_CMS,$(ALL_GCC_SRCS)))
+$(eval $(call build_cross,$(VSE_TARGET),$(HOST_CFLAGS) -DTARGET_VSE,$(ALL_GCC_SRCS)))
 
-# define target compilers
-$(eval $(call build_target,i370-mvs,-DTARGET_MVS,$(COMPILER_SRCS),$(CFLAGS_MVS)))
-$(eval $(call build_target,i370-cms,-DTARGET_CMS,$(COMPILER_SRCS),$(CFLAGS_CMS)))
-$(eval $(call build_target,i370-vse,-DTARGET_VSE,$(COMPILER_SRCS),$(CFLAGS_VSE)))
-
-
+# Define target compilers
+$(eval $(call build_target,$(MVS_TARGET),$(MVS_CFLAGS),$(ALL_GCC_SRCS)))
+$(eval $(call build_target,$(CMS_TARGET),$(CMS_CFLAGS),$(ALL_GCC_SRCS)))
+$(eval $(call build_target,$(VSE_TARGET),$(VSE_CFLAGS),$(ALL_GCC_SRCS)))
